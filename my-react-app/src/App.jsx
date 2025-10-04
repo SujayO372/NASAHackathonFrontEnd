@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Complete USA states and sample cities
 const usStates = {
   Alabama: ['Birmingham', 'Montgomery', 'Mobile', 'Huntsville', 'Tuscaloosa'],
   Alaska: ['Anchorage', 'Fairbanks', 'Juneau', 'Sitka', 'Ketchikan'],
@@ -62,10 +61,11 @@ export default function App() {
   const [weatherResult, setWeatherResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const BACKEND_BASE = 'http://127.0.0.1:5000'; // Python backend URL
+  const BACKEND_BASE = 'http://127.0.0.1:5000';
 
   const handleSubmit = async () => {
     if (!state || !city || !date || hour === '') return;
+
     setIsLoading(true);
     setWeatherResult(null);
 
@@ -91,68 +91,411 @@ export default function App() {
     }
   };
 
+  const getWeatherIcon = (weather) => {
+    if (!weather) return '☁️';
+    const w = String(weather).toLowerCase();
+    if (w.includes('rain')) return '🌧';
+    if (w.includes('cloud')) return '☁️';
+    if (w.includes('clear') || w.includes('sunny')) return '☀️';
+    if (w.includes('snow')) return '❄️';
+    if (w.includes('thunder') || w.includes('storm')) return '⛈️';
+    return '☁️';
+  };
+
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    :root {
+      --bg-1: #05060a;
+      --bg-2: #07102a;
+      --panel: #0f1724;
+      --muted: #9fb6d8;
+      --accent: #1e6fff;
+      --white: #f8fbff;
+      --glass: rgba(255,255,255,0.04);
+      --radius-lg: 18px;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body, #root {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      color: var(--white);
+    }
+    .app-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px;
+      gap: 28px;
+    }
+    .shell {
+      width: min(1200px, 96%);
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+      min-height: 520px;
+    }
+    .panel h3 {
+      margin: 0 0 12px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .panel p.lead {
+      color: var(--muted);
+      margin: 0 0 20px 0;
+      font-size: 13px;
+    }
+    .field {
+      margin-bottom: 18px;
+    }
+    .label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    select, input[type="date"], input[type="number"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.03);
+      color: var(--white);
+      border-radius: 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    select:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 14px;
+      flex-direction: column;
+    }
+    .btn {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 0;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 15px;
+      width: 100%;
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, var(--accent), #1560d9);
+      color: white;
+      box-shadow: 0 8px 28px rgba(4,30,66,0.48);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .btn.primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .meta {
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .weather-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: 22px;
+      padding: 36px;
+      box-shadow: 0 20px 60px rgba(2,6,23,0.6);
+      min-height: 520px;
+      border: 1px solid rgba(255,255,255,0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .top-row {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      justify-content: space-between;
+    }
+    .location {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .location .city {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--white);
+    }
+    .location .sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .big-weather {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .big-weather .icon {
+      font-size: 72px;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .big-weather .meta-temp {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .temp {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--white);
+    }
+    .cond {
+      font-size: 16px;
+      color: var(--muted);
+    }
+    .details {
+      margin-top: 6px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .detail {
+      background: var(--glass);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .detail .k {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .detail .v {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .insights {
+      margin-top: 12px;
+      background: rgba(255,255,255,0.01);
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.02);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+      .panel {
+        order: 2;
+      }
+      .weather-card {
+        order: 1;
+      }
+      .details {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  `;
+
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>USA Weather Predictor</h1>
+    <>
+      <style>{css}</style>
+      <div className="app-wrap">
+        <div className="shell">
+          <aside className="panel">
+            <h3>AI Weather — Controls</h3>
+            <p className="lead">Pick a location, date and hour. The AI model forecasts expected conditions for that hour.</p>
 
-      <div style={styles.form}>
-        <div style={styles.inputGroup}>
-          <label>State</label>
-          <select value={state} onChange={(e) => setState(e.target.value)}>
-            <option value="">Select State</option>
-            {Object.keys(usStates).map((st) => (
-              <option key={st} value={st}>{st}</option>
-            ))}
-          </select>
+            <div className="field">
+              <label className="label">State</label>
+              <select
+                value={state}
+                onChange={(e) => { setState(e.target.value); setCity(''); }}
+              >
+                <option value="">— Select State —</option>
+                {Object.keys(usStates).map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label className="label">City</label>
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                disabled={!state}
+              >
+                <option value="">— Select City —</option>
+                {state && usStates[state].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label className="label">Date</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+
+            <div className="field">
+              <label className="label">Hour (0-23)</label>
+              <input
+                type="number"
+                min={0}
+                max={23}
+                value={hour}
+                onChange={(e) => setHour(e.target.value)}
+              />
+            </div>
+
+            <div className="actions">
+              <button
+                className="btn primary"
+                onClick={handleSubmit}
+                disabled={isLoading || !state || !city || !date || hour === ''}
+              >
+                {isLoading ? 'Predicting…' : 'Run AI Prediction'}
+              </button>
+
+              <button
+                className="btn ghost"
+                onClick={() => {
+                  setState('');
+                  setCity('');
+                  setDate('');
+                  setHour('');
+                  setWeatherResult(null);
+                }}
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="meta">
+              <div><strong>Model:</strong> Weather-AI v1</div>
+              <div style={{ marginTop: 8 }}><strong>Resolution:</strong> Hourly • interpolation enabled</div>
+            </div>
+          </aside>
+
+          <main className="weather-card">
+            <div className="top-row">
+              <div className="location">
+                <div className="city">{city ? `${city}, ${state}` : 'No location selected'}</div>
+                <div className="sub">{date && hour !== '' ? `${date} • ${hour}:00` : 'Select date and hour to see forecast'}</div>
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, letterSpacing: 0.6 }}>AI STATUS</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)', marginTop: 6 }}>
+                  {weatherResult ? 'READY' : '—'}
+                </div>
+              </div>
+            </div>
+
+            <div className="big-weather">
+              <div className="icon">
+                {weatherResult && weatherResult.weather ? getWeatherIcon(weatherResult.weather['Condition']) : '☁️'}
+              </div>
+
+              <div className="meta-temp">
+                <div className="temp">
+                  {weatherResult && weatherResult.weather ? 
+                    `${weatherResult.weather['High (°F)'] || weatherResult.weather['Low (°F)'] || '—'}°` 
+                    : '—'}
+                </div>
+                <div className="cond">
+                  {weatherResult && weatherResult.weather ? 
+                    weatherResult.weather['Condition'] || 'Weather conditions'
+                    : 'Predicted conditions appear here after running the model.'}
+                </div>
+                <div style={{ marginTop: 8, color: 'var(--muted)', fontSize: 13 }}>
+                  {weatherResult && weatherResult.weather ? 
+                    `Wind: ${weatherResult.weather['Wind (mph)'] || '—'} • Precip: ${weatherResult.weather['Precipitation (mm)'] || '—'} mm` 
+                    : ''}
+                </div>
+              </div>
+            </div>
+
+            <div className="details">
+              {weatherResult && weatherResult.weather ? (
+                <>
+                  <div className="detail">
+                    <div className="k">Condition</div>
+                    <div className="v">{weatherResult.weather['Condition'] || '—'}</div>
+                  </div>
+                  <div className="detail">
+                    <div className="k">High</div>
+                    <div className="v">{weatherResult.weather['High (°F)'] || '—'}°F</div>
+                  </div>
+                  <div className="detail">
+                    <div className="k">Low</div>
+                    <div className="v">{weatherResult.weather['Low (°F)'] || '—'}°F</div>
+                  </div>
+                  <div className="detail">
+                    <div className="k">Precipitation</div>
+                    <div className="v">{weatherResult.weather['Precipitation (mm)'] || '—'} mm</div>
+                  </div>
+                  <div className="detail">
+                    <div className="k">Wind</div>
+                    <div className="v">{weatherResult.weather['Wind (mph)'] || '—'} mph</div>
+                  </div>
+                  <div className="detail">
+                    <div className="k">Source</div>
+                    <div className="v">{weatherResult.weather['Source'] || '—'}</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="detail"><div className="k">Condition</div><div className="v">—</div></div>
+                  <div className="detail"><div className="k">High</div><div className="v">—</div></div>
+                  <div className="detail"><div className="k">Low</div><div className="v">—</div></div>
+                  <div className="detail"><div className="k">Precipitation</div><div className="v">—</div></div>
+                  <div className="detail"><div className="k">Wind</div><div className="v">—</div></div>
+                  <div className="detail"><div className="k">Source</div><div className="v">—</div></div>
+                </>
+              )}
+            </div>
+
+            <div className="insights">
+              <strong>AI Insight:</strong>{' '}
+              {weatherResult ? 
+                'The model indicates expected conditions for the selected hour based on historical patterns and current atmospheric data.' 
+                : 'Run the prediction to get an AI-generated forecast and weather insights.'}
+            </div>
+          </main>
         </div>
-
-        <div style={styles.inputGroup}>
-          <label>City</label>
-          <select value={city} onChange={(e) => setCity(e.target.value)} disabled={!state}>
-            <option value="">Select City</option>
-            {state && usStates[state].map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.inputGroup}>
-          <label>Date</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-
-        <div style={styles.inputGroup}>
-          <label>Hour (0-23)</label>
-          <input type="number" value={hour} onChange={(e) => setHour(e.target.value)} min={0} max={23} />
-        </div>
-
-        <button onClick={handleSubmit} disabled={isLoading} style={styles.button}>
-          {isLoading ? 'Fetching...' : 'Predict Weather'}
-        </button>
       </div>
-
-      {weatherResult && (
-        <div style={styles.results}>
-          <h2>Prediction for {city}, {state} on {date} at {hour}:00</h2>
-          <p><strong>Predicted Weather:</strong> {weatherResult.predicted_weather}</p>
-
-          <h3>Expected Features:</h3>
-          <ul>
-            {Object.entries(weatherResult.features).map(([key, value]) => (
-              <li key={key}>{key}: {value}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
-
-const styles = {
-  container: { fontFamily: 'sans-serif', padding: '2rem', textAlign: 'center' },
-  title: { fontSize: '2rem', marginBottom: '1rem' },
-  form: { display: 'inline-block', textAlign: 'left', marginBottom: '2rem' },
-  inputGroup: { marginBottom: '1rem' },
-  button: { padding: '0.5rem 1rem', fontSize: '1rem', cursor: 'pointer' },
-  results: { marginTop: '2rem', background: '#f0f0f0', padding: '1rem', borderRadius: '8px' },
-};
