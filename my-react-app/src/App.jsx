@@ -169,7 +169,8 @@ export default function App() {
       font-weight: 600;
       letter-spacing: 0.2px;
     }
-    select, input[type="date"], input[type="number"] {
+    /* Added input[type="text"] so city input inherits the same UI */
+    select, input[type="date"], input[type="number"], input[type="text"] {
       width: 100%;
       padding: 12px 14px;
       background: var(--panel);
@@ -178,6 +179,15 @@ export default function App() {
       border-radius: 12px;
       font-size: 14px;
       outline: none;
+    }
+    /* nicer placeholder + focus for text inputs */
+    input::placeholder {
+      color: var(--muted);
+      opacity: 0.9;
+    }
+    input[type="text"]:focus {
+      box-shadow: 0 8px 24px rgba(30,111,255,0.10);
+      border-color: var(--accent);
     }
     select:disabled {
       opacity: 0.5;
@@ -333,7 +343,7 @@ export default function App() {
       <div className="app-wrap">
         <div className="shell">
           <aside className="panel">
-            <h3>AI Weather — Controls</h3>
+            <h3> Plan Future Events with WeatherAI </h3>
             <p className="lead">Pick a location, date and hour. The AI model forecasts expected conditions for that hour.</p>
 
             <div className="field">
@@ -351,16 +361,12 @@ export default function App() {
 
             <div className="field">
               <label className="label">City</label>
-              <select
+              <input
+                type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                disabled={!state}
-              >
-                <option value="">— Select City —</option>
-                {state && usStates[state].map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                placeholder="Enter any city"
+              />
             </div>
 
             <div className="field">
@@ -469,10 +475,6 @@ export default function App() {
                   <div className="detail">
                     <div className="k">Wind</div>
                     <div className="v">{weatherResult.weather['Wind (mph)'] || '—'} mph</div>
-                  </div>
-                  <div className="detail">
-                    <div className="k">Source</div>
-                    <div className="v">{weatherResult.weather['Source'] || '—'}</div>
                   </div>
                 </>
               ) : (
